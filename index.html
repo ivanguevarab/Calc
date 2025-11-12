@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora Financiera - ÁLAMOS IMPORT</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #EBF4FF 0%, #E0E7FF 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .logo-container {
+            flex-shrink: 0;
+        }
+
+        .logo {
+            max-width: 150px;
+            max-height: 100px;
+            object-fit: contain;
+        }
+
+        .header-text {
+            flex: 1;
+        }
+
+        .header h1 {
+            color: #312E81;
+            font-size: 2.5em;
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+
+        .header p {
+            color: #6366F1;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        .header .slogan {
+            color: #818CF8;
+            font-size: 1.3em;
+            font-weight: 300;
+            font-style: italic;
+            margin-top: 5px;
+            letter-spacing: 0.5px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-title {
+            font-size: 1.8em;
+            color: #312E81;
+            margin-bottom: 25px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .question {
+            font-size: 1.3em;
+            color: #4B5563;
+            margin-bottom: 25px;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .option-btn {
+            background: white;
+            border: 3px solid #E5E7EB;
+            border-radius: 15px;
+            padding: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .option-btn:hover {
+            border-color: #6366F1;
+            background: #EEF2FF;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(99, 102, 241, 0.2);
+        }
+
+        .option-icon {
+            font-size: 1.8em;
+        }
+
+
+
+        .selected-calc {
+            background: #EEF2FF;
+            border: 2px solid #818CF8;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+            color: #312E81;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 1em;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 10px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #D1D5DB;
+            border-radius: 12px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #6366F1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+        }
+
+        .input-group select {
+            padding: 15px;
+            border: 2px solid #D1D5DB;
+            border-radius: 12px;
+            font-size: 1em;
+            background: white;
+            cursor: pointer;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 18px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #6366F1;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #4F46E5;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-secondary {
+            background: #E5E7EB;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #D1D5DB;
+        }
+
+        .btn-download {
+            background: #10B981;
+            color: white;
+            margin-top: 20px;
+        }
+
+        .btn-download:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .result-box {
+            background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%);
+            border: 3px solid #10B981;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
+        }
+
+        .result-label {
+            font-size: 1.1em;
+            color: #065F46;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .result-value {
+            font-size: 2.5em;
+            color: #047857;
+            font-weight: 700;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        thead {
+            background: linear-gradient(135deg, #818CF8 0%, #6366F1 100%);
+        }
+
+        th {
+            padding: 18px;
+            text-align: left;
+            font-weight: 700;
+            color: white;
+            font-size: 1em;
+        }
+
+        th:not(:first-child) {
+            text-align: right;
+        }
+
+        td {
+            padding: 15px 18px;
+            border-bottom: 1px solid #E5E7EB;
+            color: #374151;
+        }
+
+        td:not(:first-child) {
+            text-align: right;
+        }
+
+        tbody tr:hover {
+            background: #F9FAFB;
+        }
+
+        .total-row {
+            background: #EEF2FF !important;
+            font-weight: 700;
+            color: #312E81;
+            border-top: 3px solid #6366F1;
+        }
+
+        .interes-cell {
+            color: #DC2626;
+            font-weight: 600;
+        }
+
+        .amortizacion-cell {
+            color: #2563EB;
+            font-weight: 600;
+        }
+
+        .saldo-cell {
+            font-weight: 700;
+            color: #374151;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            th, td {
+                padding: 10px;
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header con Logo -->
+        <div class="header">
+            <div class="logo-container">
+                <img src="LogoAlamosImport.jpg" alt="ÁLAMOS IMPORT Logo" class="logo">
+            </div>
+            <div class="header-text">
+                <h1>Calculadora Financiera</h1>
+                <p>ÁLAMOS IMPORT</p>
+                <div class="slogan">Financiamos tu progreso</div>
+            </div>
+        </div>
+
+        <!-- Selección de Cálculo -->
+        <div class="card" id="selectionCard">
+            <h2 class="section-title">
+                <span class="option-icon">🧮</span>
+                ¿Qué necesitas calcular hoy?
+            </h2>
+            <div class="options-grid">
+                <button class="option-btn" onclick="selectOption('cuota')">
+                    <span class="option-icon">💵</span>
+                    <span>Monto de la Cuota</span>
+                </button>
+                <button class="option-btn" onclick="selectOption('capital')">
+                    <span class="option-icon">💰</span>
+                    <span>Capital Inicial</span>
+                </button>
+                <button class="option-btn" onclick="selectOption('tasa')">
+                    <span class="option-icon">📊</span>
+                    <span>Tasa de Interés Anual</span>
+                </button>
+                <button class="option-btn" onclick="selectOption('plazo')">
+                    <span class="option-icon">📅</span>
+                    <span>Plazo Total</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Formulario de Cálculo -->
+        <div class="card hidden" id="formCard">
+            <div class="selected-calc" id="selectedCalc"></div>
+
+            <div class="form-group">
+                <label class="form-label">📅 Fecha de Inicio del Préstamo</label>
+                <input type="date" id="fechaInicio" class="form-input" required>
+            </div>
+
+            <div id="capitalGroup" class="form-group">
+                <label class="form-label">💰 Capital Inicial (S/)</label>
+                <input type="number" id="capital" class="form-input" placeholder="Ej: 10000" step="0.01">
+            </div>
+
+            <div id="plazoGroup" class="form-group">
+                <label class="form-label">📅 Plazo Total</label>
+                <div class="input-group">
+                    <input type="number" id="plazo" class="form-input" placeholder="Ej: 60" style="flex: 2;">
+                    <select id="unidadPlazo" class="form-input" style="flex: 1;">
+                        <option value="dias">Días</option>
+                        <option value="semanas">Semanas</option>
+                        <option value="meses">Meses</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="tasaGroup" class="form-group">
+                <label class="form-label">📊 Tasa de Interés Anual (%)</label>
+                <input type="number" id="tasa" class="form-input" placeholder="Ej: 20" step="0.01">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">🔢 Número de Cuotas</label>
+                <input type="number" id="numCuotas" class="form-input" placeholder="Ej: 2" required>
+            </div>
+
+            <div id="montoCuotaGroup" class="form-group">
+                <label class="form-label">💵 Monto de la Cuota (S/)</label>
+                <input type="number" id="montoCuota" class="form-input" placeholder="Ej: 5200" step="0.01">
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="calcular()">✨ Calcular</button>
+                <button class="btn btn-secondary" onclick="reiniciar()">🔄 Reiniciar</button>
+            </div>
+
+            <div id="resultBox" class="result-box hidden">
+                <div class="result-label">Resultado:</div>
+                <div class="result-value" id="resultValue"></div>
+            </div>
+        </div>
+
+        <!-- Tabla de Amortización -->
+        <div class="card hidden" id="tableCard">
+            <h2 class="section-title">
+                <span class="option-icon">📋</span>
+                Tabla de Amortización
+            </h2>
+            <button class="btn btn-download" onclick="descargarPDF()">📥 Descargar PDF</button>
+            <div class="table-container">
+                <table id="tablaAmortizacion">
+                    <thead>
+                        <tr>
+                            <th>Nº</th>
+                            <th>Fecha de Pago</th>
+                            <th>Cuota</th>
+                            <th>Interés</th>
+                            <th>Capital</th>
+                            <th>Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let calculoActual = '';
+        let datosCalculados = {};
+
+        // Establecer fecha actual por defecto
+        document.getElementById('fechaInicio').valueAsDate = new Date();
+
+        function selectOption(tipo) {
+            calculoActual = tipo;
+            document.getElementById('selectionCard').style.display = 'none';
+            document.getElementById('formCard').classList.remove('hidden');
+            
+            const nombres = {
+                'cuota': 'Monto de la Cuota',
+                'capital': 'Capital Inicial',
+                'tasa': 'Tasa de Interés Anual',
+                'plazo': 'Plazo Total'
+            };
+            
+            document.getElementById('selectedCalc').textContent = `Calculando: ${nombres[tipo]}`;
+            
+            // Mostrar/ocultar campos según el cálculo
+            document.getElementById('capitalGroup').style.display = tipo === 'capital' ? 'none' : 'block';
+            document.getElementById('plazoGroup').style.display = tipo === 'plazo' ? 'none' : 'block';
+            document.getElementById('tasaGroup').style.display = tipo === 'tasa' ? 'none' : 'block';
+            document.getElementById('montoCuotaGroup').style.display = tipo === 'cuota' ? 'none' : 'block';
+        }
+
+        function calcularTasaPorPeriodo(tasaAnual, plazo, unidad, numCuotas) {
+            const diasPorCuota = unidad === 'dias' ? plazo / numCuotas : 
+                                 unidad === 'semanas' ? (plazo * 7) / numCuotas :
+                                 (plazo * 30) / numCuotas;
+            return (tasaAnual / 100) * (diasPorCuota / 360);
+        }
+
+        function calcularFechasPago(fechaInicio, numCuotas, plazo, unidad) {
+            const fechas = [];
+            const fecha = new Date(fechaInicio);
+            const diasPorCuota = unidad === 'dias' ? plazo / numCuotas : 
+                                 unidad === 'semanas' ? (plazo * 7) / numCuotas :
+                                 (plazo * 30) / numCuotas;
+            
+            for (let i = 1; i <= numCuotas; i++) {
+                const nuevaFecha = new Date(fecha);
+                nuevaFecha.setDate(fecha.getDate() + (diasPorCuota * i));
+                fechas.push(nuevaFecha.toLocaleDateString('es-PE'));
+            }
+            
+            return fechas;
+        }
+
+        function generarTablaAmortizacion(capital, numCuotas, cuota, tasaPeriodo, fechas) {
+            const tabla = [];
+            let saldoRestante = capital;
+            let totalInteres = 0;
+            let totalAmortizacion = 0;
+            
+            for (let i = 1; i <= numCuotas; i++) {
+                const interes = saldoRestante * tasaPeriodo;
+                const amortizacion = cuota - interes;
+                saldoRestante = Math.max(0, saldoRestante - amortizacion);
+                
+                totalInteres += interes;
+                totalAmortizacion += amortizacion;
+                
+                tabla.push({
+                    cuota: i,
+                    fecha: fechas[i - 1],
+                    montoCuota: cuota,
+                    interes: interes,
+                    amortizacion: amortizacion,
+                    saldo: saldoRestante
+                });
+            }
+            
+            return { tabla, totalInteres, totalAmortizacion, totalCapital: capital };
+        }
+
+        function calcular() {
+            try {
+                const capital = parseFloat(document.getElementById('capital').value) || 0;
+                const plazo = parseFloat(document.getElementById('plazo').value) || 0;
+                const unidadPlazo = document.getElementById('unidadPlazo').value;
+                const tasa = parseFloat(document.getElementById('tasa').value) || 0;
+                const numCuotas = parseInt(document.getElementById('numCuotas').value) || 0;
+                const montoCuota = parseFloat(document.getElementById('montoCuota').value) || 0;
+                const fechaInicio = document.getElementById('fechaInicio').value;
+
+                if (!fechaInicio) {
+                    alert('Por favor selecciona una fecha de inicio');
+                    return;
+                }
+
+                let resultado, unidad, capitalFinal, cuotaFinal, tasaFinal, plazoFinal;
+
+                if (calculoActual === 'cuota') {
+                    const i = calcularTasaPorPeriodo(tasa, plazo, unidadPlazo, numCuotas);
+                    resultado = capital * (i * Math.pow(1 + i, numCuotas)) / (Math.pow(1 + i, numCuotas) - 1);
+                    unidad = 'soles';
+                    capitalFinal = capital;
+                    cuotaFinal = resultado;
+                    tasaFinal = tasa;
+                    plazoFinal = plazo;
+                } 
+                else if (calculoActual === 'capital') {
+                    const i = calcularTasaPorPeriodo(tasa, plazo, unidadPlazo, numCuotas);
+                    resultado = montoCuota * (Math.pow(1 + i, numCuotas) - 1) / (i * Math.pow(1 + i, numCuotas));
+                    unidad = 'soles';
+                    capitalFinal = resultado;
+                    cuotaFinal = montoCuota;
+                    tasaFinal = tasa;
+                    plazoFinal = plazo;
+                }
+                else if (calculoActual === 'tasa') {
+                    let tasaEstimada = 0.01;
+                    for (let iter = 0; iter < 1000; iter++) {
+                        const i = calcularTasaPorPeriodo(tasaEstimada * 100, plazo, unidadPlazo, numCuotas);
+                        const cuotaCalc = capital * (i * Math.pow(1 + i, numCuotas)) / (Math.pow(1 + i, numCuotas) - 1);
+                        const dif = cuotaCalc - montoCuota;
+                        if (Math.abs(dif) < 0.0001) break;
+                        tasaEstimada -= dif / 10000;
+                    }
+                    resultado = tasaEstimada * 100;
+                    unidad = '% anual';
+                    capitalFinal = capital;
+                    cuotaFinal = montoCuota;
+                    tasaFinal = resultado;
+                    plazoFinal = plazo;
+                }
+                else if (calculoActual === 'plazo') {
+                    let plazoEstimado = 1;
+                    for (let iter = 0; iter < 10000; iter++) {
+                        const i = calcularTasaPorPeriodo(tasa, plazoEstimado, unidadPlazo, numCuotas);
+                        const cuotaCalc = capital * (i * Math.pow(1 + i, numCuotas)) / (Math.pow(1 + i, numCuotas) - 1);
+                        const dif = cuotaCalc - montoCuota;
+                        if (Math.abs(dif) < 0.01) break;
+                        plazoEstimado += dif > 0 ? 1 : -1;
+                        if (plazoEstimado < 1) plazoEstimado = 1;
+                    }
+                    resultado = plazoEstimado;
+                    unidad = unidadPlazo;
+                    capitalFinal = capital;
+                    cuotaFinal = montoCuota;
+                    tasaFinal = tasa;
+                    plazoFinal = resultado;
+                }
+
+                document.getElementById('resultValue').textContent = 
+                    `S/ ${resultado.toFixed(2)} ${unidad}`.replace('S/ ', calculoActual === 'tasa' || calculoActual === 'plazo' ? '' : 'S/ ');
+                document.getElementById('resultBox').classList.remove('hidden');
+
+                // Generar tabla
+                const fechas = calcularFechasPago(fechaInicio, numCuotas, plazoFinal, unidadPlazo);
+                const i = calcularTasaPorPeriodo(tasaFinal, plazoFinal, unidadPlazo, numCuotas);
+                const { tabla, totalInteres, totalAmortizacion, totalCapital } = 
+                    generarTablaAmortizacion(capitalFinal, numCuotas, cuotaFinal, i, fechas);
+
+                datosCalculados = { 
+                    tabla, 
+                    totalInteres, 
+                    totalAmortizacion, 
+                    totalCapital,
+                    capitalInicial: capitalFinal,
+                    tasa: tasaFinal,
+                    plazo: plazoFinal,
+                    unidad: unidadPlazo,
+                    numCuotas: numCuotas,
+                    cuota: cuotaFinal,
+                    fechaInicio: fechaInicio
+                };
+
+                mostrarTabla(tabla, totalInteres, totalAmortizacion, totalCapital);
+            } catch (error) {
+                alert('Error en el cálculo. Verifica que todos los datos sean correctos.');
+            }
+        }
+
+        function mostrarTabla(tabla, totalInteres, totalAmortizacion, totalCapital) {
+            const tbody = document.getElementById('tablaBody');
+            tbody.innerHTML = '';
+
+            tabla.forEach(fila => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${fila.cuota}</strong></td>
+                    <td>${fila.fecha}</td>
+                    <td>S/ ${fila.montoCuota.toFixed(2)}</td>
+                    <td class="interes-cell">S/ ${fila.interes.toFixed(2)}</td>
+                    <td class="amortizacion-cell">S/ ${fila.amortizacion.toFixed(2)}</td>
+                    <td class="saldo-cell">S/ ${fila.saldo.toFixed(2)}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Fila de totales
+            const trTotal = document.createElement('tr');
+            trTotal.className = 'total-row';
+            trTotal.innerHTML = `
+                <td colspan="2"><strong>TOTALES</strong></td>
+                <td><strong>S/ ${(tabla.length * tabla[0].montoCuota).toFixed(2)}</strong></td>
+                <td class="interes-cell"><strong>S/ ${totalInteres.toFixed(2)}</strong></td>
+                <td class="amortizacion-cell"><strong>S/ ${totalAmortizacion.toFixed(2)}</strong></td>
+                <td></td>
+            `;
+            tbody.appendChild(trTotal);
+
+            document.getElementById('tableCard').classList.remove('hidden');
+        }
+
+        function reiniciar() {
+            calculoActual = '';
+            document.getElementById('selectionCard').style.display = 'block';
+            document.getElementById('formCard').classList.add('hidden');
+            document.getElementById('tableCard').classList.add('hidden');
+            document.getElementById('resultBox').classList.add('hidden');
+            
+            document.getElementById('capital').value = '';
+            document.getElementById('plazo').value = '';
+            document.getElementById('tasa').value = '';
+            document.getElementById('numCuotas').value = '';
+            document.getElementById('montoCuota').value = '';
+            document.getElementById('fechaInicio').valueAsDate = new Date();
+        }
+
+        function descargarPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Título sin logo (por si no carga)
+            doc.setFontSize(20);
+            doc.setTextColor(49, 46, 129);
+            doc.text('ALAMOS IMPORT', 15, 20);
+            
+            doc.setFontSize(16);
+            doc.text('Tabla de Amortizacion', 15, 28);
+
+            // Información del préstamo
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Fecha: ${new Date().toLocaleDateString('es-PE')}`, 15, 45);
+            doc.text(`Capital: S/ ${datosCalculados.capitalInicial.toFixed(2)}`, 15, 52);
+            doc.text(`Tasa Anual: ${datosCalculados.tasa.toFixed(2)}%`, 15, 59);
+            doc.text(`Plazo: ${datosCalculados.plazo} ${datosCalculados.unidad}`, 100, 52);
+            doc.text(`Cuotas: ${datosCalculados.numCuotas}`, 100, 59);
+
+            // Tabla
+            const tableData = datosCalculados.tabla.map(fila => [
+                fila.cuota,
+                fila.fecha,
+                `S/ ${fila.montoCuota.toFixed(2)}`,
+                `S/ ${fila.interes.toFixed(2)}`,
+                `S/ ${fila.amortizacion.toFixed(2)}`,
+                `S/ ${fila.saldo.toFixed(2)}`
+            ]);
+
+            // Agregar fila de totales
+            tableData.push([
+                'TOTALES',
+                '',
+                `S/ ${(datosCalculados.tabla.length * datosCalculados.cuota).toFixed(2)}`,
+                `S/ ${datosCalculados.totalInteres.toFixed(2)}`,
+                `S/ ${datosCalculados.totalAmortizacion.toFixed(2)}`,
+                ''
+            ]);
+
+            doc.autoTable({
+                startY: 70,
+                head: [['N', 'Fecha', 'Cuota', 'Interes', 'Capital', 'Saldo']],
+                body: tableData,
+                theme: 'striped',
+                headStyles: { 
+                    fillColor: [99, 102, 241],
+                    textColor: 255,
+                    fontStyle: 'bold'
+                },
+                footStyles: {
+                    fillColor: [238, 242, 255],
+                    textColor: [49, 46, 129],
+                    fontStyle: 'bold'
+                },
+                alternateRowStyles: {
+                    fillColor: [249, 250, 251]
+                }
+            });
+
+            doc.save(`Amortizacion_AlamosImport_${new Date().toISOString().split('T')[0]}.pdf`);
+        }
+    </script>
+</body>
+</html>
