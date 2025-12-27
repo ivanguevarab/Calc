@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -338,13 +339,15 @@
                 flex-direction: column;
             }
 
-            th, td {
+            th,
+            td {
                 padding: 10px;
                 font-size: 0.9em;
             }
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <!-- Header con Logo -->
@@ -413,8 +416,48 @@
             </div>
 
             <div class="form-group">
-                <label class="form-label">🔢 Número de Cuotas</label>
-                <input type="number" id="numCuotas" class="form-input" placeholder="Ej: 2" required>
+                <label class="form-label">🔢 Número de Cuotas (Total)</label>
+                <input type="number" id="numCuotas" class="form-input" placeholder="Ej: 12" required>
+            </div>
+
+            <!-- Sección de Gracia -->
+            <div class="form-group"
+                style="background: #F3F4F6; padding: 15px; border-radius: 12px; border: 1px solid #E5E7EB;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <input type="checkbox" id="checkGracia" onchange="toggleGracia()"
+                        style="width: 20px; height: 20px;">
+                    <label for="checkGracia" class="form-label" style="margin-bottom: 0;">Solicitar Periodo de
+                        Gracia</label>
+                </div>
+
+                <div id="graciaOptions" class="hidden">
+                    <div class="input-group">
+                        <div style="flex: 1;">
+                            <label class="form-label" style="font-size: 0.9em;">Días de Gracia (Calendario)</label>
+                            <input type="number" id="diasGracia" class="form-input" placeholder="Ej: 30" min="1">
+                            <small style="color: #6B7280; display: block; margin-top: 5px;">El inicio de los pagos se
+                                postergará estos días sin generar intereses.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección de Día de Pago Fijo -->
+            <div class="form-group"
+                style="background: #F3F4F6; padding: 15px; border-radius: 12px; border: 1px solid #E5E7EB;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <input type="checkbox" id="checkDiaFijo" onchange="toggleDiaFijo()"
+                        style="width: 20px; height: 20px;">
+                    <label for="checkDiaFijo" class="form-label" style="margin-bottom: 0;">Elegir Día de Pago
+                        Fijo</label>
+                </div>
+
+                <div id="diaFijoOptions" class="hidden">
+                    <label class="form-label" style="font-size: 0.9em;">Día del mes para pagar</label>
+                    <input type="number" id="diaPago" class="form-input" placeholder="Ej: 5" min="1" max="30">
+                    <small style="color: #6B7280; display: block; margin-top: 5px;">Si el plazo no es mensual, esta
+                        opción se ignorará.</small>
+                </div>
             </div>
 
             <div id="montoCuotaGroup" class="form-group">
@@ -465,20 +508,42 @@
         // Establecer fecha actual por defecto
         document.getElementById('fechaInicio').valueAsDate = new Date();
 
+        function toggleGracia() {
+            const check = document.getElementById('checkGracia');
+            const options = document.getElementById('graciaOptions');
+            if (check.checked) {
+                options.classList.remove('hidden');
+            } else {
+                options.classList.add('hidden');
+                document.getElementById('diasGracia').value = '';
+            }
+        }
+
+        function toggleDiaFijo() {
+            const check = document.getElementById('checkDiaFijo');
+            const options = document.getElementById('diaFijoOptions');
+            if (check.checked) {
+                options.classList.remove('hidden');
+            } else {
+                options.classList.add('hidden');
+                document.getElementById('diaPago').value = '';
+            }
+        }
+
         function selectOption(tipo) {
             calculoActual = tipo;
             document.getElementById('selectionCard').style.display = 'none';
             document.getElementById('formCard').classList.remove('hidden');
-            
+
             const nombres = {
                 'cuota': 'Monto de la Cuota',
                 'capital': 'Capital Inicial',
                 'tasa': 'Tasa de Interés Anual',
                 'plazo': 'Plazo Total'
             };
-            
+
             document.getElementById('selectedCalc').textContent = `Calculando: ${nombres[tipo]}`;
-            
+
             // Mostrar/ocultar campos según el cálculo
             document.getElementById('capitalGroup').style.display = tipo === 'capital' ? 'none' : 'block';
             document.getElementById('plazoGroup').style.display = tipo === 'plazo' ? 'none' : 'block';
@@ -487,26 +552,69 @@
         }
 
         function calcularTasaPorPeriodo(tasaAnual, plazo, unidad, numCuotas) {
-            const diasPorCuota = unidad === 'dias' ? plazo / numCuotas : 
-                                 unidad === 'semanas' ? (plazo * 7) / numCuotas :
-                                 (plazo * 30) / numCuotas;
+            const diasPorCuota = unidad === 'dias' ? plazo / numCuotas :
+                unidad === 'semanas' ? (plazo * 7) / numCuotas :
+                    (plazo * 30) / numCuotas;
             return (tasaAnual / 100) * (diasPorCuota / 360);
         }
 
-        function calcularFechasPago(fechaInicio, numCuotas, plazo, unidad) {
+        function calcularFechasPago(fechaInicio, numCuotas, plazo, unidad, diaFijo) {
             const fechas = [];
-            const fecha = new Date(fechaInicio);
-            const diasPorCuota = unidad === 'dias' ? plazo / numCuotas : 
-                                 unidad === 'semanas' ? (plazo * 7) / numCuotas :
-                                 (plazo * 30) / numCuotas;
-            
-            for (let i = 1; i <= numCuotas; i++) {
-                const nuevaFecha = new Date(fecha);
-                nuevaFecha.setDate(fecha.getDate() + (diasPorCuota * i));
-                fechas.push(nuevaFecha.toLocaleDateString('es-PE'));
+            // Fecha es un objeto Date
+            let fecha = new Date(fechaInicio);
+
+            // Determinar intervalo en milisegundos aprox (referencial) o lógica de meses
+            const esMensual = unidad === 'meses';
+            const intervaloMeses = esMensual ? (plazo / numCuotas) : 0;
+            const diasPorCuota = !esMensual ? (
+                unidad === 'dias' ? plazo / numCuotas :
+                    (plazo * 7) / numCuotas) : 0;
+
+            // Si hay día fijo y es mensual, ajustamos la primera fecha
+            if (esMensual && diaFijo) {
+                // Avanzar al siguiente mes
+                fecha.setMonth(fecha.getMonth() + 1);
+
+                // Intentar establecer el día fijo
+                const diaDeseado = parseInt(diaFijo);
+                const ultimoDiaMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0).getDate();
+
+                // Si el día deseado es mayor al último día del mes (ej. 30 en Febrero), usar el último
+                fecha.setDate(Math.min(diaDeseado, ultimoDiaMes));
+            } else {
+                // Si no es día fijo o variable, simplemente sumamos el primer periodo
+                if (esMensual) {
+                    fecha.setMonth(fecha.getMonth() + intervaloMeses);
+                } else {
+                    fecha.setDate(fecha.getDate() + diasPorCuota);
+                }
             }
-            
-            return fechas;
+
+            // Generar fechas
+            for (let i = 1; i <= numCuotas; i++) {
+                fechas.push(new Date(fecha)); // Guardar fecha actual
+
+                // Calcular siguiente fecha
+                if (esMensual) {
+                    // Avanzar meses manteniendo el día fijo si es posible
+                    const mesActual = fecha.getMonth();
+                    fecha.setMonth(mesActual + intervaloMeses);
+
+                    // Ajuste para día fijo si cambiamos de mes y el día no existe (ej. 31 a mes de 30)
+                    if (diaFijo) {
+                        const diaDeseado = parseInt(diaFijo);
+                        const ultimoDiaSig = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0).getDate();
+                        fecha.setDate(Math.min(diaDeseado, ultimoDiaSig));
+                    }
+                } else {
+                    fecha.setDate(fecha.getDate() + diasPorCuota);
+                }
+            }
+
+            // Formatear a String
+            return fechas.map(f => f.toLocaleDateString('es-PE', {
+                year: 'numeric', month: '2-digit', day: '2-digit'
+            }));
         }
 
         function generarTablaAmortizacion(capital, numCuotas, cuota, tasaPeriodo, fechas) {
@@ -514,15 +622,15 @@
             let saldoRestante = capital;
             let totalInteres = 0;
             let totalAmortizacion = 0;
-            
+
             for (let i = 1; i <= numCuotas; i++) {
                 const interes = saldoRestante * tasaPeriodo;
                 const amortizacion = cuota - interes;
                 saldoRestante = Math.max(0, saldoRestante - amortizacion);
-                
+
                 totalInteres += interes;
                 totalAmortizacion += amortizacion;
-                
+
                 tabla.push({
                     cuota: i,
                     fecha: fechas[i - 1],
@@ -532,7 +640,7 @@
                     saldo: saldoRestante
                 });
             }
-            
+
             return { tabla, totalInteres, totalAmortizacion, totalCapital: capital };
         }
 
@@ -544,12 +652,24 @@
                 const tasa = parseFloat(document.getElementById('tasa').value) || 0;
                 const numCuotas = parseInt(document.getElementById('numCuotas').value) || 0;
                 const montoCuota = parseFloat(document.getElementById('montoCuota').value) || 0;
-                const fechaInicio = document.getElementById('fechaInicio').value;
+                const fechaInicioInput = document.getElementById('fechaInicio').value;
 
-                if (!fechaInicio) {
+                // Datos nuevos
+                const usaGracia = document.getElementById('checkGracia').checked;
+                const diasGracia = usaGracia ? (parseInt(document.getElementById('diasGracia').value) || 0) : 0;
+
+                const usaDiaFijo = document.getElementById('checkDiaFijo').checked;
+                const diaFijo = usaDiaFijo ? (document.getElementById('diaPago').value || null) : null;
+
+                if (!fechaInicioInput) {
                     alert('Por favor selecciona una fecha de inicio');
                     return;
                 }
+
+                // AJUSTE DE GRACIA: Desplazar la fecha de inicio
+                const partesFecha = fechaInicioInput.split('-');
+                let fechaInicioEfectiva = new Date(partesFecha[0], partesFecha[1] - 1, partesFecha[2]);
+                fechaInicioEfectiva.setDate(fechaInicioEfectiva.getDate() + diasGracia);
 
                 let resultado, unidad, capitalFinal, cuotaFinal, tasaFinal, plazoFinal;
 
@@ -561,7 +681,7 @@
                     cuotaFinal = resultado;
                     tasaFinal = tasa;
                     plazoFinal = plazo;
-                } 
+                }
                 else if (calculoActual === 'capital') {
                     const i = calcularTasaPorPeriodo(tasa, plazo, unidadPlazo, numCuotas);
                     resultado = montoCuota * (Math.pow(1 + i, numCuotas) - 1) / (i * Math.pow(1 + i, numCuotas));
@@ -605,20 +725,30 @@
                     plazoFinal = resultado;
                 }
 
-                document.getElementById('resultValue').textContent = 
+                document.getElementById('resultValue').textContent =
                     `S/ ${resultado.toFixed(2)} ${unidad}`.replace('S/ ', calculoActual === 'tasa' || calculoActual === 'plazo' ? '' : 'S/ ');
+
+                if (diasGracia > 0) {
+                    document.getElementById('resultValue').innerHTML += `<div style="font-size: 0.5em; margin-top: 5px;">(Inicio de pagos diferido ${diasGracia} días)</div>`;
+                }
+
                 document.getElementById('resultBox').classList.remove('hidden');
 
                 // Generar tabla
-                const fechas = calcularFechasPago(fechaInicio, numCuotas, plazoFinal, unidadPlazo);
+                // Fechas
+                const fechas = calcularFechasPago(fechaInicioEfectiva, numCuotas, plazoFinal, unidadPlazo, diaFijo);
+
+                // Tasa
                 const i = calcularTasaPorPeriodo(tasaFinal, plazoFinal, unidadPlazo, numCuotas);
-                const { tabla, totalInteres, totalAmortizacion, totalCapital } = 
+
+                // Tabla
+                const { tabla, totalInteres, totalAmortizacion, totalCapital } =
                     generarTablaAmortizacion(capitalFinal, numCuotas, cuotaFinal, i, fechas);
 
-                datosCalculados = { 
-                    tabla, 
-                    totalInteres, 
-                    totalAmortizacion, 
+                datosCalculados = {
+                    tabla,
+                    totalInteres,
+                    totalAmortizacion,
                     totalCapital,
                     capitalInicial: capitalFinal,
                     tasa: tasaFinal,
@@ -626,11 +756,13 @@
                     unidad: unidadPlazo,
                     numCuotas: numCuotas,
                     cuota: cuotaFinal,
-                    fechaInicio: fechaInicio
+                    fechaInicio: fechaInicioInput,
+                    diasGracia: diasGracia
                 };
 
                 mostrarTabla(tabla, totalInteres, totalAmortizacion, totalCapital);
             } catch (error) {
+                console.error(error);
                 alert('Error en el cálculo. Verifica que todos los datos sean correctos.');
             }
         }
@@ -673,13 +805,22 @@
             document.getElementById('formCard').classList.add('hidden');
             document.getElementById('tableCard').classList.add('hidden');
             document.getElementById('resultBox').classList.add('hidden');
-            
+
             document.getElementById('capital').value = '';
             document.getElementById('plazo').value = '';
             document.getElementById('tasa').value = '';
             document.getElementById('numCuotas').value = '';
             document.getElementById('montoCuota').value = '';
             document.getElementById('fechaInicio').valueAsDate = new Date();
+
+            // Checkboxes
+            document.getElementById('checkGracia').checked = false;
+            document.getElementById('graciaOptions').classList.add('hidden');
+            document.getElementById('diasGracia').value = '';
+
+            document.getElementById('checkDiaFijo').checked = false;
+            document.getElementById('diaFijoOptions').classList.add('hidden');
+            document.getElementById('diaPago').value = '';
         }
 
         function descargarPDF() {
@@ -690,16 +831,22 @@
             doc.setFontSize(20);
             doc.setTextColor(49, 46, 129);
             doc.text('ALAMOS IMPORT', 15, 20);
-            
+
             doc.setFontSize(16);
             doc.text('Tabla de Amortizacion', 15, 28);
 
             // Información del préstamo
             doc.setFontSize(10);
             doc.setTextColor(0, 0, 0);
-            doc.text(`Fecha: ${new Date().toLocaleDateString('es-PE')}`, 15, 45);
-            doc.text(`Capital: S/ ${datosCalculados.capitalInicial.toFixed(2)}`, 15, 52);
-            doc.text(`Tasa Anual: ${datosCalculados.tasa.toFixed(2)}%`, 15, 59);
+            const fechaOriginal = new Date(datosCalculados.fechaInicio).toLocaleDateString('es-PE');
+            doc.text(`Fecha: ${fechaOriginal}`, 15, 45);
+
+            if (datosCalculados.diasGracia > 0) {
+                doc.text(`Gracia: ${datosCalculados.diasGracia} dias`, 15, 50);
+            }
+
+            doc.text(`Capital: S/ ${datosCalculados.capitalInicial.toFixed(2)}`, 15, 55);
+            doc.text(`Tasa Anual: ${datosCalculados.tasa.toFixed(2)}%`, 15, 60);
             doc.text(`Plazo: ${datosCalculados.plazo} ${datosCalculados.unidad}`, 100, 52);
             doc.text(`Cuotas: ${datosCalculados.numCuotas}`, 100, 59);
 
@@ -728,7 +875,7 @@
                 head: [['N', 'Fecha', 'Cuota', 'Interes', 'Capital', 'Saldo']],
                 body: tableData,
                 theme: 'striped',
-                headStyles: { 
+                headStyles: {
                     fillColor: [99, 102, 241],
                     textColor: 255,
                     fontStyle: 'bold'
@@ -747,4 +894,5 @@
         }
     </script>
 </body>
+
 </html>
