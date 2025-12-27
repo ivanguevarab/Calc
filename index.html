@@ -838,7 +838,8 @@
             // Información del préstamo
             doc.setFontSize(10);
             doc.setTextColor(0, 0, 0);
-            const fechaOriginal = new Date(datosCalculados.fechaInicio).toLocaleDateString('es-PE');
+            const partesFecha = datosCalculados.fechaInicio.split('-');
+            const fechaOriginal = `${partesFecha[2]}/${partesFecha[1]}/${partesFecha[0]}`;
             doc.text(`Fecha: ${fechaOriginal}`, 15, 45);
 
             if (datosCalculados.diasGracia > 0) {
