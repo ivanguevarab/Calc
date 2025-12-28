@@ -362,31 +362,9 @@
             </div>
         </div>
 
-        <!-- Selección de Cálculo -->
-        <div class="card" id="selectionCard">
-            <h2 class="section-title">
-                <span class="option-icon">🧮</span>
-                ¿Qué necesitas calcular hoy?
-            </h2>
-            <div class="options-grid">
-                <button class="option-btn" onclick="selectOption('cuota')">
-                    <span class="option-icon">💵</span>
-                    <span>Monto de la Cuota</span>
-                </button>
-                <button class="option-btn" onclick="selectOption('capital')">
-                    <span class="option-icon">💰</span>
-                    <span>Capital Inicial</span>
-                </button>
-                <button class="option-btn" onclick="selectOption('tasa')">
-                    <span class="option-icon">📊</span>
-                    <span>Tasa de Interés Anual</span>
-                </button>
-            </div>
-        </div>
-
         <!-- Formulario de Cálculo -->
-        <div class="card hidden" id="formCard">
-            <div class="selected-calc" id="selectedCalc"></div>
+        <div class="card" id="formCard">
+            <div class="selected-calc" id="selectedCalc">Calculando: Monto de la Cuota</div>
 
             <div class="form-group">
                 <label class="form-label">📅 Fecha de Inicio del Préstamo</label>
@@ -402,10 +380,10 @@
                 <label class="form-label">📅 Plazo Total</label>
                 <div class="input-group">
                     <input type="number" id="plazo" class="form-input" placeholder="Ej: 60" style="flex: 2;">
-                    <select id="unidadPlazo" class="form-input" style="flex: 1;">
+                    <select id="unidadPlazo" class="form-input" style="flex: 1;" onchange="actualizarEstadoDiaFijo()">
                         <option value="dias">Días</option>
                         <option value="semanas">Semanas</option>
-                        <option value="meses">Meses</option>
+                        <option value="meses" selected>Meses</option>
                     </select>
                 </div>
             </div>
@@ -455,14 +433,17 @@
                 <div id="diaFijoOptions" class="hidden">
                     <label class="form-label" style="font-size: 0.9em;">Día del mes para pagar</label>
                     <input type="number" id="diaPago" class="form-input" placeholder="Ej: 5" min="1" max="30">
+
+                    <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+                        <input type="checkbox" id="checkProximoMes" style="width: 18px; height: 18px;">
+                        <label for="checkProximoMes" class="form-label"
+                            style="margin-bottom: 0; font-size: 0.9em; font-weight: normal;">Iniciar pagos el próximo
+                            mes</label>
+                    </div>
+
                     <small style="color: #6B7280; display: block; margin-top: 5px;">Si el plazo no es mensual, esta
                         opción se ignorará.</small>
                 </div>
-            </div>
-
-            <div id="montoCuotaGroup" class="form-group">
-                <label class="form-label">💵 Monto de la Cuota (S/)</label>
-                <input type="number" id="montoCuota" class="form-input" placeholder="Ej: 5200" step="0.01">
             </div>
 
             <div class="btn-group">
@@ -502,11 +483,30 @@
     </div>
 
     <script>
-        let calculoActual = '';
         let datosCalculados = {};
+
+        // Función para habilitar/deshabilitar Día Fijo según Unidad de Plazo
+        function actualizarEstadoDiaFijo() {
+            const unidad = document.getElementById('unidadPlazo').value;
+            const checkDiaFijo = document.getElementById('checkDiaFijo');
+
+            if (unidad === 'meses') {
+                checkDiaFijo.disabled = false;
+                checkDiaFijo.parentElement.style.opacity = '1';
+                checkDiaFijo.parentElement.style.cursor = 'pointer';
+            } else {
+                checkDiaFijo.checked = false;
+                checkDiaFijo.disabled = true;
+                checkDiaFijo.parentElement.style.opacity = '0.5';
+                checkDiaFijo.parentElement.style.cursor = 'not-allowed';
+                toggleDiaFijo(); // Asegurar que se oculten las opciones
+            }
+        }
 
         // Establecer fecha actual por defecto
         document.getElementById('fechaInicio').valueAsDate = new Date();
+        // Inicializar estado del checkbox
+        actualizarEstadoDiaFijo();
 
         function toggleGracia() {
             const check = document.getElementById('checkGracia');
@@ -527,28 +527,8 @@
             } else {
                 options.classList.add('hidden');
                 document.getElementById('diaPago').value = '';
+                document.getElementById('checkProximoMes').checked = false;
             }
-        }
-
-        function selectOption(tipo) {
-            calculoActual = tipo;
-            document.getElementById('selectionCard').style.display = 'none';
-            document.getElementById('formCard').classList.remove('hidden');
-
-            const nombres = {
-                'cuota': 'Monto de la Cuota',
-                'capital': 'Capital Inicial',
-                'tasa': 'Tasa de Interés Anual',
-                'plazo': 'Plazo Total'
-            };
-
-            document.getElementById('selectedCalc').textContent = `Calculando: ${nombres[tipo]}`;
-
-            // Mostrar/ocultar campos según el cálculo
-            document.getElementById('capitalGroup').style.display = tipo === 'capital' ? 'none' : 'block';
-            document.getElementById('plazoGroup').style.display = tipo === 'plazo' ? 'none' : 'block';
-            document.getElementById('tasaGroup').style.display = tipo === 'tasa' ? 'none' : 'block';
-            document.getElementById('montoCuotaGroup').style.display = tipo === 'cuota' ? 'none' : 'block';
         }
 
         function calcularTasaPorPeriodo(tasaAnual, plazo, unidad, numCuotas) {
@@ -558,87 +538,121 @@
             return (tasaAnual / 100) * (diasPorCuota / 360);
         }
 
-        function calcularFechasPago(fechaInicio, numCuotas, plazo, unidad, diaFijo) {
+        function calcularFechasPago(fechaInicio, numCuotas, plazo, unidad, diaFijo, forzarProximoMes) {
             const fechas = [];
-            // Fecha es un objeto Date
-            let fecha = new Date(fechaInicio);
+            // Fecha inicial de referencia (Inicio efectivo tras gracia)
+            let fechaBase = new Date(fechaInicio);
 
-            // Determinar intervalo en milisegundos aprox (referencial) o lógica de meses
             const esMensual = unidad === 'meses';
-            const intervaloMeses = esMensual ? (plazo / numCuotas) : 0;
             const diasPorCuota = !esMensual ? (
                 unidad === 'dias' ? plazo / numCuotas :
                     (plazo * 7) / numCuotas) : 0;
 
-            // Si hay día fijo y es mensual, ajustamos la primera fecha
-            if (esMensual && diaFijo) {
-                // Avanzar al siguiente mes
-                fecha.setMonth(fecha.getMonth() + 1);
+            // Determinar si debemos alinear al día fijo
+            const usarDiaFijo = esMensual && diaFijo;
+            let diaAncla = usarDiaFijo ? parseInt(diaFijo) : fechaBase.getDate();
 
-                // Intentar establecer el día fijo
-                const diaDeseado = parseInt(diaFijo);
-                const ultimoDiaMes = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0).getDate();
+            let fechaCursor = new Date(fechaBase);
 
-                // Si el día deseado es mayor al último día del mes (ej. 30 en Febrero), usar el último
-                fecha.setDate(Math.min(diaDeseado, ultimoDiaMes));
-            } else {
-                // Si no es día fijo o variable, simplemente sumamos el primer periodo
-                if (esMensual) {
-                    fecha.setMonth(fecha.getMonth() + intervaloMeses);
-                } else {
-                    fecha.setDate(fecha.getDate() + diasPorCuota);
-                }
+            // CORRECCIÓN LOGICA DIA FIJO:
+            // Validar si el primer pago puede ser en el MISMO mes de inicio
+            // Esto ocurre solo si: Es mensual, hay día fijo, el día de inicio es menor al día fijo,
+            // Y EL USUARIO NO HA FORZADO EL PRÓXIMO MES.
+            let primerPagoMismoMes = false;
+            if (usarDiaFijo && fechaBase.getDate() < diaAncla && !forzarProximoMes) {
+                primerPagoMismoMes = true;
             }
 
-            // Generar fechas
             for (let i = 1; i <= numCuotas; i++) {
-                fechas.push(new Date(fecha)); // Guardar fecha actual
-
-                // Calcular siguiente fecha
                 if (esMensual) {
-                    // Avanzar meses manteniendo el día fijo si es posible
-                    const mesActual = fecha.getMonth();
-                    fecha.setMonth(mesActual + intervaloMeses);
+                    // Avanzar mes
+                    // Primero seteamos al día 1 para evitar overflow
+                    fechaCursor.setDate(1);
 
-                    // Ajuste para día fijo si cambiamos de mes y el día no existe (ej. 31 a mes de 30)
-                    if (diaFijo) {
-                        const diaDeseado = parseInt(diaFijo);
-                        const ultimoDiaSig = new Date(fecha.getFullYear(), fecha.getMonth() + 1, 0).getDate();
-                        fecha.setDate(Math.min(diaDeseado, ultimoDiaSig));
+                    // Si es la primera cuota y podemos pagar este mismo mes, NO avanzamos mes.
+                    // En todos los demás casos, sí avanzamos.
+                    if (i === 1 && primerPagoMismoMes) {
+                        // Mismo mes
+                    } else {
+                        fechaCursor.setMonth(fechaCursor.getMonth() + 1);
                     }
+
+                    // Ahora intentamos volver al día ancla
+                    const maxDiaMes = new Date(fechaCursor.getFullYear(), fechaCursor.getMonth() + 1, 0).getDate();
+                    const diaDestino = Math.min(diaAncla, maxDiaMes);
+                    fechaCursor.setDate(diaDestino);
+
                 } else {
-                    fecha.setDate(fecha.getDate() + diasPorCuota);
+                    fechaCursor.setDate(fechaCursor.getDate() + diasPorCuota);
                 }
+                fechas.push(new Date(fechaCursor));
             }
 
-            // Formatear a String
             return fechas.map(f => f.toLocaleDateString('es-PE', {
                 year: 'numeric', month: '2-digit', day: '2-digit'
             }));
         }
 
-        function generarTablaAmortizacion(capital, numCuotas, cuota, tasaPeriodo, fechas) {
+        function generarTablaAmortizacion(capital, numCuotas, cuota, tasaAnual, fechas, fechaInicio) {
             const tabla = [];
             let saldoRestante = capital;
             let totalInteres = 0;
             let totalAmortizacion = 0;
 
-            for (let i = 1; i <= numCuotas; i++) {
-                const interes = saldoRestante * tasaPeriodo;
-                const amortizacion = cuota - interes;
-                saldoRestante = Math.max(0, saldoRestante - amortizacion);
+            // Convertir strings de fecha a objetos Date para calcular días
+            const fechaObjects = fechas.map(f => {
+                const parts = f.split('/');
+                return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+            });
+
+            const fechaInicioObj = new Date(fechaInicio); // Fecha desembolso (ya ajustada por gracia)
+
+            // Tasa diaria (Año comercial 360 días)
+            const tasaDiaria = (tasaAnual / 100) / 360;
+
+            let fechaAnterior = fechaInicioObj;
+
+            for (let i = 0; i < numCuotas; i++) {
+                const fechaActual = fechaObjects[i];
+
+                // Calcular días reales transcurridos
+                const diffTime = Math.abs(fechaActual - fechaAnterior);
+                const diasTranscurridos = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                // Interés exacto por días
+                const interes = saldoRestante * tasaDiaria * diasTranscurridos;
+
+                // La amortización es lo que sobra de la cuota fija
+                // IMPORTANTE: Si es la última cuota, ajustamos para cerrar saldo
+                let amortizacion;
+                let cuotaReal = cuota;
+
+                if (i === numCuotas - 1) {
+                    amortizacion = saldoRestante;
+                    cuotaReal = amortizacion + interes;
+                } else {
+                    amortizacion = cuota - interes;
+                    // CORRECCIÓN: Permitimos amortización negativa (capitalización)
+                    // Si el interés supera la cuota, el saldo aumenta.
+                    // Esto permite que el Goal Seek encuentre la cuota equilibrio real más alta.
+                }
+
+                saldoRestante = saldoRestante - amortizacion;
+                if (Math.abs(saldoRestante) < 0.01) saldoRestante = 0;
 
                 totalInteres += interes;
                 totalAmortizacion += amortizacion;
 
                 tabla.push({
-                    cuota: i,
-                    fecha: fechas[i - 1],
-                    montoCuota: cuota,
+                    cuota: i + 1,
+                    fecha: fechas[i],
+                    montoCuota: cuotaReal,
                     interes: interes,
                     amortizacion: amortizacion,
                     saldo: saldoRestante
                 });
+
+                fechaAnterior = fechaActual;
             }
 
             return { tabla, totalInteres, totalAmortizacion, totalCapital: capital };
@@ -646,23 +660,29 @@
 
         function calcular() {
             try {
+                // Modo siempre es 'cuota'
                 const capital = parseFloat(document.getElementById('capital').value) || 0;
                 const plazo = parseFloat(document.getElementById('plazo').value) || 0;
                 const unidadPlazo = document.getElementById('unidadPlazo').value;
                 const tasa = parseFloat(document.getElementById('tasa').value) || 0;
                 const numCuotas = parseInt(document.getElementById('numCuotas').value) || 0;
-                const montoCuota = parseFloat(document.getElementById('montoCuota').value) || 0;
                 const fechaInicioInput = document.getElementById('fechaInicio').value;
 
-                // Datos nuevos
+                // Datos nuevos - Gracia y Día Fijo
                 const usaGracia = document.getElementById('checkGracia').checked;
                 const diasGracia = usaGracia ? (parseInt(document.getElementById('diasGracia').value) || 0) : 0;
 
                 const usaDiaFijo = document.getElementById('checkDiaFijo').checked;
                 const diaFijo = usaDiaFijo ? (document.getElementById('diaPago').value || null) : null;
+                const forzarProximoMes = usaDiaFijo ? document.getElementById('checkProximoMes').checked : false; // NUEVO
 
                 if (!fechaInicioInput) {
                     alert('Por favor selecciona una fecha de inicio');
+                    return;
+                }
+
+                if (!capital || !plazo || !tasa || !numCuotas) {
+                    alert('Por favor completa todos los campos requeridos.');
                     return;
                 }
 
@@ -671,62 +691,33 @@
                 let fechaInicioEfectiva = new Date(partesFecha[0], partesFecha[1] - 1, partesFecha[2]);
                 fechaInicioEfectiva.setDate(fechaInicioEfectiva.getDate() + diasGracia);
 
-                let resultado, unidad, capitalFinal, cuotaFinal, tasaFinal, plazoFinal;
+                let resultado, unidad;
 
-                if (calculoActual === 'cuota') {
-                    const i = calcularTasaPorPeriodo(tasa, plazo, unidadPlazo, numCuotas);
-                    resultado = capital * (i * Math.pow(1 + i, numCuotas)) / (Math.pow(1 + i, numCuotas) - 1);
-                    unidad = 'soles';
-                    capitalFinal = capital;
-                    cuotaFinal = resultado;
-                    tasaFinal = tasa;
-                    plazoFinal = plazo;
-                }
-                else if (calculoActual === 'capital') {
-                    const i = calcularTasaPorPeriodo(tasa, plazo, unidadPlazo, numCuotas);
-                    resultado = montoCuota * (Math.pow(1 + i, numCuotas) - 1) / (i * Math.pow(1 + i, numCuotas));
-                    unidad = 'soles';
-                    capitalFinal = resultado;
-                    cuotaFinal = montoCuota;
-                    tasaFinal = tasa;
-                    plazoFinal = plazo;
-                }
-                else if (calculoActual === 'tasa') {
-                    let tasaEstimada = 0.01;
-                    for (let iter = 0; iter < 1000; iter++) {
-                        const i = calcularTasaPorPeriodo(tasaEstimada * 100, plazo, unidadPlazo, numCuotas);
-                        const cuotaCalc = capital * (i * Math.pow(1 + i, numCuotas)) / (Math.pow(1 + i, numCuotas) - 1);
-                        const dif = cuotaCalc - montoCuota;
-                        if (Math.abs(dif) < 0.0001) break;
-                        tasaEstimada -= dif / 10000;
-                    }
-                    resultado = tasaEstimada * 100;
-                    unidad = '% anual';
-                    capitalFinal = capital;
-                    cuotaFinal = montoCuota;
-                    tasaFinal = resultado;
-                    plazoFinal = plazo;
-                }
-                else if (calculoActual === 'plazo') {
-                    let plazoEstimado = 1;
-                    for (let iter = 0; iter < 10000; iter++) {
-                        const i = calcularTasaPorPeriodo(tasa, plazoEstimado, unidadPlazo, numCuotas);
-                        const cuotaCalc = capital * (i * Math.pow(1 + i, numCuotas)) / (Math.pow(1 + i, numCuotas) - 1);
-                        const dif = cuotaCalc - montoCuota;
-                        if (Math.abs(dif) < 0.01) break;
-                        plazoEstimado += dif > 0 ? 1 : -1;
-                        if (plazoEstimado < 1) plazoEstimado = 1;
-                    }
-                    resultado = plazoEstimado;
-                    unidad = unidadPlazo;
-                    capitalFinal = capital;
-                    cuotaFinal = montoCuota;
-                    tasaFinal = tasa;
-                    plazoFinal = resultado;
+                // Lógica de Goal Seek para Cuota Homogénea
+                // 1. Estimación Inicial
+                const i = calcularTasaPorPeriodo(tasa, plazo, unidadPlazo, numCuotas);
+                let cuotaEstimada = capital * (i * Math.pow(1 + i, numCuotas)) / (Math.pow(1 + i, numCuotas) - 1);
+
+                // 2. Refinamiento Iterativo
+                const fechas = calcularFechasPago(fechaInicioEfectiva, numCuotas, plazo, unidadPlazo, diaFijo, forzarProximoMes);
+                let cuotaOptima = cuotaEstimada;
+
+                for (let k = 0; k < 20; k++) {
+                    const { tabla } = generarTablaAmortizacion(capital, numCuotas, cuotaOptima, tasa, fechas, fechaInicioEfectiva);
+                    const ultimaCuotaReal = tabla[tabla.length - 1].montoCuota;
+                    const diff = ultimaCuotaReal - cuotaOptima;
+
+                    if (Math.abs(diff) < 0.005) break;
+
+                    cuotaOptima += diff / numCuotas;
                 }
 
-                document.getElementById('resultValue').textContent =
-                    `S/ ${resultado.toFixed(2)} ${unidad}`.replace('S/ ', calculoActual === 'tasa' || calculoActual === 'plazo' ? '' : 'S/ ');
+                // REDONDEO A 0.10 SOLES (Moneda Peruana)
+                // Redondear al múltiplo de 0.10 más cercano
+                resultado = Math.round(cuotaOptima * 10) / 10;
+                unidad = 'soles';
+
+                document.getElementById('resultValue').textContent = `S/ ${resultado.toFixed(2)} ${unidad}`;
 
                 if (diasGracia > 0) {
                     document.getElementById('resultValue').innerHTML += `<div style="font-size: 0.5em; margin-top: 5px;">(Inicio de pagos diferido ${diasGracia} días)</div>`;
@@ -734,28 +725,21 @@
 
                 document.getElementById('resultBox').classList.remove('hidden');
 
-                // Generar tabla
-                // Fechas
-                const fechas = calcularFechasPago(fechaInicioEfectiva, numCuotas, plazoFinal, unidadPlazo, diaFijo);
-
-                // Tasa
-                const i = calcularTasaPorPeriodo(tasaFinal, plazoFinal, unidadPlazo, numCuotas);
-
-                // Tabla
+                // Generar tabla final usando el RESULTADO REDONDEADO
                 const { tabla, totalInteres, totalAmortizacion, totalCapital } =
-                    generarTablaAmortizacion(capitalFinal, numCuotas, cuotaFinal, i, fechas);
+                    generarTablaAmortizacion(capital, numCuotas, resultado, tasa, fechas, fechaInicioEfectiva);
 
                 datosCalculados = {
                     tabla,
                     totalInteres,
                     totalAmortizacion,
                     totalCapital,
-                    capitalInicial: capitalFinal,
-                    tasa: tasaFinal,
-                    plazo: plazoFinal,
+                    capitalInicial: capital,
+                    tasa: tasa,
+                    plazo: plazo,
                     unidad: unidadPlazo,
                     numCuotas: numCuotas,
-                    cuota: cuotaFinal,
+                    cuota: resultado,
                     fechaInicio: fechaInicioInput,
                     diasGracia: diasGracia
                 };
@@ -785,11 +769,14 @@
             });
 
             // Fila de totales
+            // Sumar cuotas reales
+            const totalCuotasReal = tabla.reduce((acc, fila) => acc + fila.montoCuota, 0);
+
             const trTotal = document.createElement('tr');
             trTotal.className = 'total-row';
             trTotal.innerHTML = `
                 <td colspan="2"><strong>TOTALES</strong></td>
-                <td><strong>S/ ${(tabla.length * tabla[0].montoCuota).toFixed(2)}</strong></td>
+                <td><strong>S/ ${totalCuotasReal.toFixed(2)}</strong></td>
                 <td class="interes-cell"><strong>S/ ${totalInteres.toFixed(2)}</strong></td>
                 <td class="amortizacion-cell"><strong>S/ ${totalAmortizacion.toFixed(2)}</strong></td>
                 <td></td>
@@ -800,9 +787,7 @@
         }
 
         function reiniciar() {
-            calculoActual = '';
-            document.getElementById('selectionCard').style.display = 'block';
-            document.getElementById('formCard').classList.add('hidden');
+            document.getElementById('formCard').classList.remove('hidden');
             document.getElementById('tableCard').classList.add('hidden');
             document.getElementById('resultBox').classList.add('hidden');
 
@@ -810,7 +795,6 @@
             document.getElementById('plazo').value = '';
             document.getElementById('tasa').value = '';
             document.getElementById('numCuotas').value = '';
-            document.getElementById('montoCuota').value = '';
             document.getElementById('fechaInicio').valueAsDate = new Date();
 
             // Checkboxes
@@ -862,10 +846,12 @@
             ]);
 
             // Agregar fila de totales
+            const totalCuotasPDF = datosCalculados.tabla.reduce((acc, fila) => acc + fila.montoCuota, 0);
+
             tableData.push([
                 'TOTALES',
                 '',
-                `S/ ${(datosCalculados.tabla.length * datosCalculados.cuota).toFixed(2)}`,
+                `S/ ${totalCuotasPDF.toFixed(2)}`,
                 `S/ ${datosCalculados.totalInteres.toFixed(2)}`,
                 `S/ ${datosCalculados.totalAmortizacion.toFixed(2)}`,
                 ''
