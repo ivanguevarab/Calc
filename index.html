@@ -807,77 +807,158 @@
             document.getElementById('diaPago').value = '';
         }
 
+        // Función auxiliar para convertir imagen a DataURL
+        function getBase64Image(img) {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0);
+            return canvas.toDataURL("image/jpeg");
+        }
+
         function descargarPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
-            // Título sin logo (por si no carga)
-            doc.setFontSize(20);
-            doc.setTextColor(49, 46, 129);
-            doc.text('ALAMOS IMPORT', 15, 20);
+            // Colores Corporativos
+            const colorPrimario = [99, 102, 241]; // #6366f1 Indigo 500
+            const colorSecundario = [79, 70, 229]; // #4f46e5 Indigo 600
+            const colorGris = [107, 114, 128]; // #6b7280 Gray 500
 
-            doc.setFontSize(16);
-            doc.text('Tabla de Amortizacion', 15, 28);
-
-            // Información del préstamo
-            doc.setFontSize(10);
-            doc.setTextColor(0, 0, 0);
-            const partesFecha = datosCalculados.fechaInicio.split('-');
-            const fechaOriginal = `${partesFecha[2]}/${partesFecha[1]}/${partesFecha[0]}`;
-            doc.text(`Fecha: ${fechaOriginal}`, 15, 45);
-
-            if (datosCalculados.diasGracia > 0) {
-                doc.text(`Gracia: ${datosCalculados.diasGracia} dias`, 15, 50);
+            // LOGO
+            try {
+                const imgElement = document.querySelector('.logo');
+                if (imgElement) {
+                    const imgData = getBase64Image(imgElement);
+                    doc.addImage(imgData, 'JPEG', 15, 10, 30, 0);
+                }
+            } catch (e) {
+                console.warn("No se pudo cargar el logo", e);
             }
 
-            doc.text(`Capital: S/ ${datosCalculados.capitalInicial.toFixed(2)}`, 15, 55);
-            doc.text(`Tasa Anual: ${datosCalculados.tasa.toFixed(2)}%`, 15, 60);
-            doc.text(`Plazo: ${datosCalculados.plazo} ${datosCalculados.unidad}`, 100, 52);
-            doc.text(`Cuotas: ${datosCalculados.numCuotas}`, 100, 59);
+            // ENCABEZADO
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(22);
+            doc.setTextColor(...colorSecundario);
+            doc.text("CRONOGRAMA DE PAGOS", 195, 20, { align: "right" });
 
-            // Tabla
-            const tableData = datosCalculados.tabla.map(fila => [
-                fila.cuota,
-                fila.fecha,
-                `S/ ${fila.montoCuota.toFixed(2)}`,
-                `S/ ${fila.interes.toFixed(2)}`,
-                `S/ ${fila.amortizacion.toFixed(2)}`,
-                `S/ ${fila.saldo.toFixed(2)}`
-            ]);
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(...colorGris);
+            doc.text("ÁLAMOS IMPORT - Financiamos tu progreso", 195, 26, { align: "right" });
 
-            // Agregar fila de totales
-            const totalCuotasPDF = datosCalculados.tabla.reduce((acc, fila) => acc + fila.montoCuota, 0);
+            // Línea divisoria
+            doc.setDrawColor(...colorPrimario);
+            doc.setLineWidth(0.5);
+            doc.line(15, 35, 195, 35);
 
-            tableData.push([
-                'TOTALES',
-                '',
-                `S/ ${totalCuotasPDF.toFixed(2)}`,
-                `S/ ${datosCalculados.totalInteres.toFixed(2)}`,
-                `S/ ${datosCalculados.totalAmortizacion.toFixed(2)}`,
-                ''
-            ]);
+            // RESUMEN DEL PRÉSTAMO
+            const partesFecha = datosCalculados.fechaInicio.split('-');
+            const fechaFormateada = `${partesFecha[2]}/${partesFecha[1]}/${partesFecha[0]}`;
+
+            doc.setFontSize(11);
+            doc.setTextColor(0);
+
+            const col1 = 15, col2 = 80, col3 = 145;
+            const row1 = 45, row2 = 52;
+
+            // Labels
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(60, 60, 60);
+            doc.text("Fecha Inicio:", col1, row1);
+            doc.text("Capital:", col2, row1);
+            doc.text("Tasa Anual:", col3, row1);
+
+            doc.text("Plazo Total:", col1, row2);
+            doc.text("Cuotas:", col2, row2);
+            if (datosCalculados.diasGracia > 0) doc.text("Gracia:", col3, row2);
+
+            // Values
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(100, 100, 100);
+
+            const capitalStr = `S/ ${datosCalculados.capitalInicial.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`;
+
+            doc.text(fechaFormateada, col1 + 25, row1);
+            doc.text(capitalStr, col2 + 18, row1);
+            doc.text(`${datosCalculados.tasa}%`, col3 + 24, row1);
+
+            doc.text(`${datosCalculados.plazo} ${datosCalculados.unidad}`, col1 + 25, row2);
+            doc.text(`${datosCalculados.numCuotas}`, col2 + 18, row2);
+            if (datosCalculados.diasGracia > 0) doc.text(`${datosCalculados.diasGracia} días`, col3 + 24, row2);
+
+            // TABLA
+            const columnas = [
+                { header: 'N°', dataKey: 'cuota' },
+                { header: 'Fecha Pago', dataKey: 'fecha' },
+                { header: 'Cuota', dataKey: 'montoCuota' },
+                { header: 'Interés', dataKey: 'interes' },
+                { header: 'Capital', dataKey: 'amortizacion' },
+                { header: 'Saldo', dataKey: 'saldo' },
+            ];
+
+            const bodyData = datosCalculados.tabla.map(fila => ({
+                cuota: fila.cuota,
+                fecha: fila.fecha,
+                montoCuota: `S/ ${fila.montoCuota.toFixed(2)}`,
+                interes: `S/ ${fila.interes.toFixed(2)}`,
+                amortizacion: `S/ ${fila.amortizacion.toFixed(2)}`,
+                saldo: `S/ ${fila.saldo.toFixed(2)}`
+            }));
+
+            const totalCuotasSum = bodyData.reduce((acc, f) => acc + parseFloat(f.montoCuota.replace('S/ ', '')), 0);
+
+            bodyData.push({
+                cuota: '',
+                fecha: 'TOTALES',
+                montoCuota: `S/ ${totalCuotasSum.toFixed(2)}`,
+                interes: `S/ ${datosCalculados.totalInteres.toFixed(2)}`,
+                amortizacion: `S/ ${datosCalculados.totalAmortizacion.toFixed(2)}`,
+                saldo: ''
+            });
 
             doc.autoTable({
-                startY: 70,
-                head: [['N', 'Fecha', 'Cuota', 'Interes', 'Capital', 'Saldo']],
-                body: tableData,
+                startY: 65,
+                columns: columnas,
+                body: bodyData,
                 theme: 'striped',
                 headStyles: {
-                    fillColor: [99, 102, 241],
+                    fillColor: colorPrimario,
                     textColor: 255,
-                    fontStyle: 'bold'
+                    fontStyle: 'bold',
+                    halign: 'center'
                 },
-                footStyles: {
-                    fillColor: [238, 242, 255],
-                    textColor: [49, 46, 129],
-                    fontStyle: 'bold'
+                bodyStyles: { textColor: 50 },
+                alternateRowStyles: { fillColor: [243, 244, 246] },
+                columnStyles: {
+                    0: { halign: 'center', cellWidth: 15 },
+                    1: { halign: 'center' },
+                    2: { halign: 'right', fontStyle: 'bold', textColor: colorSecundario },
+                    3: { halign: 'right', textColor: [220, 38, 38] },
+                    4: { halign: 'right', textColor: [5, 150, 105] },
+                    5: { halign: 'right', fontStyle: 'bold' }
                 },
-                alternateRowStyles: {
-                    fillColor: [249, 250, 251]
+                didParseCell: function (data) {
+                    if (data.row.index === bodyData.length - 1) {
+                        data.cell.styles.fontStyle = 'bold';
+                        data.cell.styles.fillColor = [229, 231, 235];
+                        data.cell.styles.textColor = 0;
+                        if (data.column.dataKey === 'interes') data.cell.styles.textColor = [220, 38, 38];
+                    }
                 }
             });
 
-            doc.save(`Amortizacion_AlamosImport_${new Date().toISOString().split('T')[0]}.pdf`);
+            // Footer
+            const pageCount = doc.internal.getNumberOfPages();
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.text(`Generado el ${new Date().toLocaleDateString()} - Página ${i} de ${pageCount}`, 195, 290, { align: 'right' });
+            }
+
+            doc.save(`Cronograma_AlamosImport_${new Date().toISOString().split('T')[0]}.pdf`);
         }
     </script>
 </body>
