@@ -379,7 +379,8 @@
             <div id="plazoGroup" class="form-group">
                 <label class="form-label">📅 Plazo Total</label>
                 <div class="input-group">
-                    <input type="number" id="plazo" class="form-input" placeholder="Ej: 60" style="flex: 2;">
+                    <input type="number" id="plazo" class="form-input" placeholder="Ej: 60" style="flex: 2;"
+                        onchange="actualizarEstadoDiaFijo()" onkeyup="actualizarEstadoDiaFijo()">
                     <select id="unidadPlazo" class="form-input" style="flex: 1;" onchange="actualizarEstadoDiaFijo()">
                         <option value="dias">Días</option>
                         <option value="semanas">Semanas</option>
@@ -395,7 +396,8 @@
 
             <div class="form-group">
                 <label class="form-label">🔢 Número de Cuotas (Total)</label>
-                <input type="number" id="numCuotas" class="form-input" placeholder="Ej: 12" required>
+                <input type="number" id="numCuotas" class="form-input" placeholder="Ej: 12" required
+                    onchange="actualizarEstadoDiaFijo()" onkeyup="actualizarEstadoDiaFijo()">
             </div>
 
             <!-- Sección de Gracia -->
@@ -485,12 +487,31 @@
     <script>
         let datosCalculados = {};
 
-        // Función para habilitar/deshabilitar Día Fijo según Unidad de Plazo
+        // Función para habilitar/deshabilitar Día Fijo según si el pago es aprox Mensual
         function actualizarEstadoDiaFijo() {
             const unidad = document.getElementById('unidadPlazo').value;
+            const plazo = parseFloat(document.getElementById('plazo').value) || 0;
+            const numCuotas = parseInt(document.getElementById('numCuotas').value) || 0;
             const checkDiaFijo = document.getElementById('checkDiaFijo');
 
-            if (unidad === 'meses') {
+            // Calcular intervalo estimado
+            let factor = 0;
+            if (unidad === 'meses') factor = 30;
+            else if (unidad === 'semanas') factor = 7;
+            else factor = 1;
+
+            let intervalo = 0;
+            if (plazo > 0 && numCuotas > 0) {
+                intervalo = (plazo * factor) / numCuotas;
+            } else if (unidad === 'meses') {
+                // Por defecto si no hay datos, asumimos mensual si la unidad es meses
+                intervalo = 30;
+            }
+
+            // Habilitar solo si es aproximadamente mensual (28-31 días)
+            const esMensual = intervalo >= 28 && intervalo <= 31;
+
+            if (esMensual) {
                 checkDiaFijo.disabled = false;
                 checkDiaFijo.parentElement.style.opacity = '1';
                 checkDiaFijo.parentElement.style.cursor = 'pointer';
@@ -543,48 +564,60 @@
             // Fecha inicial de referencia (Inicio efectivo tras gracia)
             let fechaBase = new Date(fechaInicio);
 
-            const esMensual = unidad === 'meses';
-            const diasPorCuota = !esMensual ? (
-                unidad === 'dias' ? plazo / numCuotas :
-                    (plazo * 7) / numCuotas) : 0;
+            // 1. Normalizar Plazo a Días
+            let factorDias = 0;
+            if (unidad === 'dias') factorDias = 1;
+            else if (unidad === 'semanas') factorDias = 7;
+            else if (unidad === 'meses') factorDias = 30;
 
-            // Determinar si debemos alinear al día fijo
-            const usarDiaFijo = esMensual && diaFijo;
+            const totalDiasPlazo = plazo * factorDias;
+
+            // 2. Calcular Intervalo Real entre Cuotas
+            const intervaloDias = totalDiasPlazo / numCuotas;
+
+            // 3. Determinar Estrategia
+            // Si el intervalo es aprox 30 días (28-31), tratamos como Mensual para permitir Día Fijo
+            const esMensualPuro = intervaloDias >= 28 && intervaloDias <= 31;
+
+            // Determinar si debemos alinear al día fijo (Solo si es Mensual Puro)
+            const usarDiaFijo = esMensualPuro && diaFijo;
             let diaAncla = usarDiaFijo ? parseInt(diaFijo) : fechaBase.getDate();
 
             let fechaCursor = new Date(fechaBase);
 
-            // CORRECCIÓN LOGICA DIA FIJO:
-            // Validar si el primer pago puede ser en el MISMO mes de inicio
-            // Esto ocurre solo si: Es mensual, hay día fijo, el día de inicio es menor al día fijo,
-            // Y EL USUARIO NO HA FORZADO EL PRÓXIMO MES.
+            // Validación de Primer Pago en Mismo Mes (Solo lógica mensual)
             let primerPagoMismoMes = false;
+            // Solo si es mensual, hay día fijo, estamos antes del día fijo, y no se forzó próximo mes
             if (usarDiaFijo && fechaBase.getDate() < diaAncla && !forzarProximoMes) {
                 primerPagoMismoMes = true;
             }
 
             for (let i = 1; i <= numCuotas; i++) {
-                if (esMensual) {
-                    // Avanzar mes
-                    // Primero seteamos al día 1 para evitar overflow
-                    fechaCursor.setDate(1);
+                if (esMensualPuro) {
+                    // Estrategia Mensual (Mantiene día fijo limpio)
+                    fechaCursor.setDate(1); // Evitar overflow al cambiar mes
 
-                    // Si es la primera cuota y podemos pagar este mismo mes, NO avanzamos mes.
-                    // En todos los demás casos, sí avanzamos.
                     if (i === 1 && primerPagoMismoMes) {
-                        // Mismo mes
+                        // Mismo mes, solo ajustamos al día ancla
                     } else {
                         fechaCursor.setMonth(fechaCursor.getMonth() + 1);
                     }
 
-                    // Ahora intentamos volver al día ancla
+                    // Ajustar al día ancla o último día del mes
                     const maxDiaMes = new Date(fechaCursor.getFullYear(), fechaCursor.getMonth() + 1, 0).getDate();
                     const diaDestino = Math.min(diaAncla, maxDiaMes);
                     fechaCursor.setDate(diaDestino);
-
                 } else {
-                    fechaCursor.setDate(fechaCursor.getDate() + diasPorCuota);
+                    // Estrategia de Intervalo (Días/Semanas/Quincenas)
+                    // Sumamos el intervalo acumulado para evitar deriva por redondeo
+                    // Fecha = FechaInicio + (Intervalo * NumeroCuota)
+                    const diasASumar = Math.round(intervaloDias * i);
+
+                    const nuevaFecha = new Date(fechaBase);
+                    nuevaFecha.setDate(fechaBase.getDate() + diasASumar);
+                    fechaCursor = nuevaFecha;
                 }
+
                 fechas.push(new Date(fechaCursor));
             }
 
